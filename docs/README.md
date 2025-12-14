@@ -1,86 +1,110 @@
-# 📚 Documentation
+# 📁 Documentation - Vintage Bluetooth Speaker
 
-**Everything you need to build your vintage Bluetooth speaker.**
+## 📋 Latest Versions
 
----
-
-## 📋 Documents
-
-| Document | Version | Description |
-|----------|---------|-------------|
-| [Circuit](Circuit_Enceinte_BT_Vintage_V1_9.md) | V1.9 | Complete build guide — BOM, wiring, step-by-step |
-| [Breakout Box](Breakout_Box_Enceinte_BT_V1_5.md) | V1.5 | Test jig — Protected sense lines (fire-safe) |
-| Test Protocol | *Soon* | Validation procedures |
+| Document | Version | Status |
+|----------|---------|--------|
+| **Circuit** | [V1.10](Circuit_Enceinte_BT_Vintage_V1_10.md) | ✅ Current |
+| **Breakout Box** | [V1.6](Breakout_Box_Enceinte_BT_V1_6.md) | ✅ Current |
 
 ---
 
-## 🗂️ Document Structure
+## 🔄 Version History
 
-### Circuit V1.6
+### Circuit Enceinte BT Vintage
 
-| Section | What you'll find |
-|---------|------------------|
-| Parts list | Everything to order with search terms |
-| Up2Stream config | How to set MONO mode (jumpers) |
-| Protection board | Soldering order, connections |
-| Wiring | All cables with lengths and colors |
-| Breakout integration | How to add test points |
-
-### Breakout Box V1.2
-
-| Section | What you'll find |
-|---------|------------------|
-| Components | 7 terminal blocks, 1 enclosure |
-| Build order | Drill → Mount → Wire → Label |
-| Internal wiring | Every connection explained |
-| Test points | What voltage to expect at each point |
-
----
-
-## 🔢 Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| V1.9 | Dec 2025 | Fire safety: R_sense 10kΩ on breakout lines, C_snub 100V film |
-| V1.8 | Dec 2025 | Certified audit: PTC removed, SW1 snubber, IND1 before SW1, NTC 10mm, HP DCR threshold |
-| V1.7 | Dec 2025 | Full audit fixes: anti-reverse diode, TVS 22CA, PTC 5A, fuse 6.3A, decoupling, HP check |
-| V1.6 | Dec 2025 | Explicit refs in parentheses, clear build order |
-| V1.5 | Dec 2025 | Breakout box integration |
-| V1.4 | Dec 2025 | Table format, veroboard |
-| V1.3 | Dec 2025 | External charger, pre-built battery |
-| V1.2 | Dec 2025 | MONO mode |
-| V1.1 | Dec 2025 | Explicit format |
+| Version | Date | Key Changes |
+|---------|------|-------------|
+| **V1.10** | Dec 2025 | **External audit V2**: D1→SB560(5A real), NTC→7A, C3 1000µF bulk, power 30W (not 60W), R_sense 1kΩ |
+| V1.9 | Dec 2025 | Fire-safe breakout: R_sense 10kΩ, snubber 100V film |
+| V1.8 | Dec 2025 | Certified audit: PTC removed, snubber added, IND1 before SW1, NTC 10mm raised |
+| V1.7 | Dec 2025 | D1 reverse protection, TVS P6KE22CA, decoupling, ferrite |
+| V1.6 | Dec 2025 | Explicit refs, clear order |
+| V1.5 | Dec 2025 | DCR check, mono PBTL |
+| V1.4 | Dec 2025 | BMS managed pack |
+| V1.3 | Dec 2025 | Inrush NTC 2.5Ω |
+| V1.2 | Dec 2025 | TVS 1.5KE18CA added |
+| V1.1 | Dec 2025 | PTC added (later removed) |
 | V1.0 | Dec 2025 | Initial version |
 
----
+### Breakout Box
 
-## 🛠️ How to Use
-
-1. **Read Circuit V1.6 first** — Understand the full system
-2. **Order parts** — Use the search terms provided
-3. **Build in order** — Follow "Tu commences par" / "Tu finis par"
-4. **Optional: Build Breakout Box** — For easier debugging
-5. **Test** — Protocol coming soon
+| Version | Date | Key Changes |
+|---------|------|-------------|
+| **V1.6** | Dec 2025 | R_sense 1kΩ 0.5W (industry standard) |
+| V1.5 | Dec 2025 | R_sense 10kΩ fire-safe |
+| V1.4 | Dec 2025 | Direct wires (DANGEROUS - do not use) |
 
 ---
 
-## 📝 Language Note
+## ⚠️ Important Notes
 
-Documents are in **French** (original build notes). 
+### Why V1.10?
 
-Key terms translation:
+External audit identified critical issues:
 
-| French | English |
-|--------|---------|
-| Tu commences par | You start with |
-| Tu finis par | You end with |
-| Bornier | Terminal block |
-| Fil | Wire |
-| Souder | Solder |
-| Brancher | Connect |
-| Entree | Input |
-| Sortie | Output |
+| Issue | Problem | Fix |
+|-------|---------|-----|
+| D1 1N5822 | Rated 3A, system needs 5A | → SB560 (5A real) |
+| NTC 5A | At ceiling, accelerated aging | → NTC 7A |
+| Power "60W" | False (needs 24V, we have 14.8V) | → 30W typ |
+| Bass brownout | No bulk cap near amp | → C3 1000µF |
+| R_sense 10kΩ | Works but not industry standard | → 1kΩ 0.5W |
+
+### Breakout Box Safety
+
+| Version | Short-circuit risk | Status |
+|---------|-------------------|--------|
+| V1.4 | 200A → FIRE HAZARD | ❌ DO NOT USE |
+| V1.5+ | 17mA max (safe) | ✅ OK |
+
+**V1.5+ requires Circuit V1.9+ with integrated R_sense resistors.**
 
 ---
 
-**Happy building! 🔧**
+## 📐 Block Diagram V1.10
+
+```
+BATT+ ─┬─ IND1+ (always on - disconnect if storing)
+       │
+       ├─ R_s1 (1kΩ) ─── TP1 ═══ Breakout V_BATT
+       │
+       └─ J1+ → D1(SB560) ─┬─ R_s2 (1kΩ) ─── TP2 ═══ Breakout V_D1
+                           │
+                           └─ [SW1 // Snubber] → F1 ─┬─ R_s3 (1kΩ) ─── TP3
+                                    │                │
+                               47Ω+100nF(100V)       └─ NTC1(7A) → J2+ ─┬─ R_s4 ─ TP4
+                                                                        │
+                                                                        └─ C3(1000µF) → AMP
+
+BATT- ── J1- ── TP_GND ═══════════════════════════════════════════════ J2- → AMP
+                                                                  TVS + C1 + C2
+```
+
+---
+
+## 🛡️ Protection Chain V1.10
+
+| Fault | Protection | Response |
+|-------|------------|----------|
+| Reverse polarity | D1 SB560 blocks | Instant |
+| Overvoltage >22V | TVS P6KE22CA clamps | <1µs |
+| Overcurrent | F1 6.3A fuse | 10ms-2s |
+| Inrush | NTC 2.5Ω 7A limits | 50ms |
+| Switch arc | 47Ω+100nF snubber | 5µs |
+| Bass brownout | C3 1000µF absorbs | Continuous |
+| Breakout short | R_sense 1kΩ limits to 17mA | Instant |
+
+---
+
+## 📖 How to Use
+
+1. **Start with Circuit V1.10** — Main build guide
+2. **Check speaker impedance** — Must be ≥ 5.5Ω DCR
+3. **Configure Up2Stream** — Jumpers to MONO
+4. **Build protection board** — Follow step by step
+5. **Optional: Build Breakout V1.6** — For debugging
+
+---
+
+**Always use latest versions. Older versions may have safety issues.**
