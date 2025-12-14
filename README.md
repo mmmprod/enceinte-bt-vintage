@@ -3,7 +3,7 @@
 **Turn any vintage speaker into a modern wireless audio system.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-1.6-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-1.7-blue.svg)]()
 [![Status: In Development](https://img.shields.io/badge/Status-In%20Development-orange.svg)]()
 
 ---
@@ -45,8 +45,8 @@ A complete DIY guide to breathe new life into your old speaker cabinet. Stream m
 | File | Description |
 |------|-------------|
 | [docs/](docs/) | Full build guides and schematics |
-| [Circuit V1.6](docs/Circuit_Enceinte_BT_Vintage_V1_6.md) | Main build guide with BOM and wiring |
-| [Breakout Box V1.2](docs/Breakout_Box_Enceinte_BT_V1_2.md) | Test jig for voltage monitoring |
+| [Circuit V1.7](docs/Circuit_Enceinte_BT_Vintage_V1_7.md) | Main build guide with BOM and wiring |
+| [Breakout Box V1.3](docs/Breakout_Box_Enceinte_BT_V1_3.md) | Test jig for voltage monitoring |
 | Tests *(coming soon)* | Validation protocol |
 
 ---
@@ -90,6 +90,12 @@ A complete DIY guide to breathe new life into your old speaker cabinet. Stream m
 ## 📜 License
 
 MIT — Do whatever you want with this.
+
+---
+
+## 🙏 Credits
+
+Designed and documented with the help of Claude (Anthropic).
 
 ---
 
