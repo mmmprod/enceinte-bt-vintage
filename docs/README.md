@@ -1,392 +1,367 @@
-# 📚 DOCUMENTATION TECHNIQUE V2.0
+# DOCUMENTATION TECHNIQUE V2.1 — INDEX
 
 **Projet:** Enceinte Bluetooth Vintage
-**Version:** 2.0
-**Date:** Decembre 2024
+**Version Documentation:** 2.1
+**Date:** Decembre 2025
 
 ---
 
-## 📋 TABLE DES MATIERES
-
-1. [Architecture V2.0](#architecture-v20)
-2. [Chaine de protection](#chaine-de-protection)
-3. [Soft-start P-MOSFET](#soft-start-p-mosfet)
-4. [Circuit anti-pop](#circuit-anti-pop)
-5. [Filtre LC charge](#filtre-lc-charge)
-6. [Gestion thermique](#gestion-thermique)
-7. [Configuration HP](#configuration-hp)
-8. [Historique versions](#historique-versions)
-9. [Audits et corrections](#audits-et-corrections)
-
----
-
-## 1. ARCHITECTURE V2.0
-
-### Schema bloc complet
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           CIRCUIT V2.0                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  CHARGER+ ─── L1 ───┬─── C_filt ─── GND                                     │
-│               10uH  │    4700uF                                              │
-│                     │                                                        │
-│  BATT+ ─────────────┴─── D1 ─── Q_SS ─── SW1 ─── F1 ─── NTC ─── V_PROT     │
-│                        SB560  IRF9540         6.3A   2.5R/10A    │          │
-│                                                                   │          │
-│                                                              ┌────┴────┐     │
-│                                                              │         │     │
-│                                                           [ARYLIC]  [K_HP]   │
-│                                                           [MODULE]  [RELAY]  │
-│                                                              │         │     │
-│                                                              └────┬────┘     │
-│                                                                   │          │
-│                                                                  HP          │
-│                                                                              │
-│  BATT- ══════════════════════════════════════════════════════════ GND       │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Flux de puissance
-
-```
-1. CHARGER ou BATTERIE
-       ↓
-2. FILTRE LC (si chargeur)
-       ↓
-3. D1 SB560 (anti-inversion)
-       ↓
-4. Q_SS IRF9540 (soft-start)
-       ↓
-5. SW1 (interrupteur principal)
-       ↓
-6. F1 6.3A (fusible)
-       ↓
-7. NTC 2.5R/10A (inrush limiter)
-       ↓
-8. V_PROT → TVS + Condensateurs + IND1
-       ↓
-9. MODULE ARYLIC
-       ↓
-10. K_HP RELAIS (anti-pop)
-       ↓
-11. HAUT-PARLEUR
-```
-
----
-
-## 2. CHAINE DE PROTECTION
-
-### Tableau des protections
-
-| Ordre | Composant | Protection | Reaction |
-|-------|-----------|------------|----------|
-| 1 | D1 SB560 | Inversion polarite | Bloque courant inverse |
-| 2 | TVS 1.5KE18CA | Surtension >18V | Clampe a 25V |
-| 3 | F1 6.3A | Court-circuit | Fond en <1s @ 15A |
-| 4 | NTC 2.5R/10A | Inrush | Limite a 6A froid |
-| 5 | Q_SS soft-start | Redemarrage rapide | Montee 500ms |
-| 6 | K_HP relais | Pop audio | Coupe HP en 30ms |
-| 7 | BMS pack | OCP/OVP/UVP | Coupe batterie |
-
-### Scenarios de defaut
-
-| Scenario | Protection active | Resultat |
-|----------|-------------------|----------|
-| Batterie inversee | D1 bloque | Rien ne se passe |
-| Chargeur 24V | TVS clampe + F1 fond | Circuit protege |
-| Court-circuit HP | F1 fond | Circuit protege |
-| Redemarrage rapide | Q_SS soft-start | Demarrage OK |
-| Extinction | K_HP coupe | Pas de pop |
-| Stockage long | IND1 OFF | Zero drain |
-
----
-
-## 3. SOFT-START P-MOSFET
-
-### Probleme resolu
-
-Sans soft-start, un redemarrage rapide (OFF/ON en <30s) avec NTC chaude cause:
-- NTC chaude = R ≈ 0.3 ohm
-- I_inrush = 14V / 0.3 = 47A
-- BMS coupe (OCP 30A)
-- Utilisateur confus
-
-### Solution
-
-P-MOSFET IRF9540 controle par RC:
-- Montee progressive du courant sur 500ms
-- Meme si NTC chaude, pas de pic brutal
-- BMS ne coupe jamais
-
-### Schema
-
-```
-V_D1 ─── S ──┬── D ─── V_SOFT
-             │
-         Q_SS (IRF9540)
-             │
-             G
-             │
-    ┌────────┼────────┐
-    │        │        │
- R_pull   R_gate   C_gate
- (10k)    (47k)    (33uF)
-    │        │        │
-    │        └───┬────┘
-    │            │
-   V_D1      D_disch ─── SW1
-```
-
-### Calculs
-
-```
-tau = R_gate × C_gate = 47k × 33uF = 1.55s
-Temps pour Vgs = -4V (seuil): t ≈ 0.3 × tau ≈ 500ms
-Courant monte progressivement sur 500ms
-```
-
----
-
-## 4. CIRCUIT ANTI-POP
-
-### Probleme resolu
-
-A l'extinction, les condensateurs de l'ampli se dechargent via le HP, causant un "pop" audible.
-
-### Solution
-
-Relais K_HP coupe le HP AVANT que l'ampli fasse pop:
-- Detection chute V_PROT par comparateur
-- Seuil: 11.7V
-- Temps de reaction: <30ms
-- Pop arrive vers 50-100ms
-- HP deconnecte AVANT pop
-
-### Schema
-
-```
-V_PROT ─── R1 (100k) ───┬─── LM393 IN+
-                        │
-                    R2 (27k)
-                        │
-                       GND
-
-TL431 (2.5V) ─── LM393 IN-
-
-LM393 OUT ─── R3 (1k) ─── BC547 ─── Bobine K_HP
-                                        │
-                                    D_flyback
-                                        │
-                                       GND
-```
-
-### Calculs
-
-```
-Seuil = V_ref × (R1+R2)/R2 = 2.5V × 127k/27k = 11.7V
-
-Temps de reaction:
-- dV/dt ≈ 80 V/s (decharge condensateurs)
-- Temps 14V → 11.7V = 2.3V / 80 = 29ms
-- K_HP ouvre en 5ms supplementaires
-- HP deconnecte a t = 34ms < 50ms (pop)
-```
-
----
-
-## 5. FILTRE LC CHARGE
-
-### Probleme resolu
-
-Charger pendant l'ecoute injecte du bruit 50Hz du chargeur.
-
-### Solution
-
-Filtre LC second ordre:
-- L1 = 10uH
-- C_filt = 4700uF
-- f_coupure = 734Hz
-- Attenuation @ 100Hz = 35dB
-
-### Schema
-
-```
-CHARGER+ ─── L1 (10uH) ───┬─── C_filt (4700uF) ─── GND
-                          │
-BATT+ ────────────────────┘
-```
-
-### Calculs
-
-```
-f_c = 1 / (2π × sqrt(L × C))
-f_c = 1 / (2π × sqrt(10uH × 4700uF))
-f_c = 734 Hz
-
-Attenuation @ 100Hz = 20 × log10((f_c/f)²)
-= 20 × log10(53.9) = 34.6 dB
-
-Ripple chargeur: 200mVpp
-Apres filtre: 200mV / 54 = 3.7mVpp → INAUDIBLE
-```
-
----
-
-## 6. GESTION THERMIQUE
-
-### Sources de chaleur
-
-| Composant | P_diss | Notes |
-|-----------|--------|-------|
-| D1 SB560 | 3.5W @ 5A | Radiateur obligatoire |
-| Q_SS IRF9540 | 1W | TO-220 nu suffit |
-| Module Arylic | 5W | Pad + plaque alu |
-
-### Solution thermique
-
-```
-1. D1: Petit radiateur TO-220 (10 degC/W)
-2. Module: Pad thermique + plaque alu 100×100×3mm
-3. Enceinte: Grilles aeration ≥ 50cm²
-```
-
-### Calculs
-
-```
-Module sans dissipateur:
-Rth_enceinte ≈ 10 degC/W
-Delta_T = 5W × 10 = 50 degC
-T_interne @ 25C = 75 degC > 40C spec → SURCHAUFFE
-
-Module avec dissipateur + grilles:
-Rth_total ≈ 7 degC/W
-Delta_T = 5W × 7 = 35 degC
-T_interne @ 25C = 60 degC → OK (limite)
-```
-
----
-
-## 7. CONFIGURATION HP
-
-### Pour le constructeur uniquement
-
-L'utilisateur final n'a pas a toucher aux jumpers. C'est configure a la fabrication.
-
-### Tableau de decision
-
-| DCR mesure | Z nominale | Mode | Jumpers | Cablage |
-|------------|------------|------|---------|---------|
-| < 3.5 ohm | 4 ohm | STEREO | HAUT+MILIEU | L+ / L- |
-| 3.5-5.5 ohm | 6 ohm | STEREO | HAUT+MILIEU | L+ / L- |
-| > 5.5 ohm | 8 ohm+ | MONO PBTL | MILIEU+BAS | R+ / L+ |
-
-### Pourquoi cette distinction?
-
-```
-Mode MONO PBTL:
-- Les 2 canaux sont pontes en parallele
-- Z vue par ampli = Z_HP / 2
-- HP 4 ohm → Z vue = 2 ohm → TROP BAS
-- HP 8 ohm → Z vue = 4 ohm → OK
-
-Mode STEREO (1 canal):
-- Un seul canal utilise
-- Z vue = Z_HP
-- HP 4 ohm → Z vue = 4 ohm → OK
-```
-
----
-
-## 8. HISTORIQUE VERSIONS
-
-### V1.0 - V1.4 (Oct 2024)
-
-- Conception initiale
-- Ajout protections basiques
-
-### V1.5 - V1.9 (Nov-Dec 2024)
-
-- TVS 1.5KE18CA
-- NTC 2.5R 7A
-- Snubber SW1
-- Securite incendie breakout
-
-### V1.10 (Dec 2024)
-
-- Corrections audit externe V2
-- D1 → SB560 (5A reel)
-- NTC → 7A
-- Ajout C3 1000uF
-
-### V2.0 (Dec 2024) - ACTUEL
-
-- Refonte complete
-- Soft-start P-MOSFET
-- Relais anti-pop
-- Filtre LC charge
-- IND1 apres SW1
-- NTC 10A
-- Dissipateur integre
-
----
-
-## 9. AUDITS ET CORRECTIONS
-
-### Audit V1 (Nov 2024)
-
-| Point | Severite | Correction |
-|-------|----------|------------|
-| D1 sous-dim | Critique | 1N5822 → SB560 |
-| NTC limite | Majeur | 5A → 7A |
-| Snubber absent | Majeur | Ajout RC 47R+100nF |
-
-### Audit V2 (Dec 2024)
-
-| Point | Severite | Correction V1.10 | Correction V2.0 |
-|-------|----------|------------------|-----------------|
-| Thermique 40C | Critique | Warning | Dissipateur |
-| Mauvais chargeur | Critique | Warning XT60 | Connecteur detrompe |
-| Charge+ecoute | Critique | Warning | Filtre LC |
-| Redemarrage | Majeur | Warning 30s | Soft-start |
-| Pop extinction | Majeur | "Normal" | Relais K_HP |
-| IND1 drain | Majeur | Warning deconnexion | IND1 apres SW1 |
-| HP 4 ohm | Majeur | Interdit | Mode STEREO |
-
-### Philosophie V2.0
-
-```
-V1.x: "Warning-driven design"
-      → L'utilisateur doit suivre des regles
-      → Risque d'erreur humaine
-
-V2.0: "Solution-driven design"
-      → Le circuit gere tout
-      → Zero contrainte utilisateur
-```
-
----
-
-## 📁 FICHIERS DU PROJET
+## INDEX DES FICHIERS
+
+### Documentation Circuit
+
+| Fichier | Version | Lignes | Description |
+|---------|---------|--------|-------------|
+| Circuit_Enceinte_BT_Vintage_V2_1.md | 2.1 | 693 | **ACTUEL** - Schema + BOM + Guide |
+| Circuit_Enceinte_BT_Vintage_V2_0.md | 2.0 | 893 | Soft-start + anti-pop |
+| Circuit_Enceinte_BT_Vintage_V1_10.md | 1.10 | - | Corrections audit V2 |
+| Circuit_Enceinte_BT_Vintage_V1_9.md | 1.9 | - | Archive |
+| Circuit_Enceinte_BT_Vintage_V1_8.md | 1.8 | - | Archive |
+
+### Documentation Breakout Box
+
+| Fichier | Version | Lignes | Description |
+|---------|---------|--------|-------------|
+| Breakout_Box_Enceinte_BT_V3_1.md | 3.1 | 606 | **ACTUEL** - Triple protection |
+| Breakout_Box_Enceinte_BT_V2_0.md | 2.0 | - | R_sense integrees |
+| Breakout_Box_Enceinte_BT_V1_6.md | 1.6 | - | Archive |
+
+### README
 
 | Fichier | Description |
 |---------|-------------|
-| Circuit_Enceinte_BT_Vintage_V2_0.md | Schema complet + BOM |
-| Breakout_Box_Enceinte_BT_V2_0.md | Outil diagnostic |
-| README.md | Presentation projet |
-| docs/README.md | Ce fichier |
+| README_V2.1.md | Guide utilisateur principal |
+| docs_README_V2.1.md | Ce fichier (index technique) |
 
 ---
 
-## ⚠️ NOTES IMPORTANTES
+## CHANGELOG COMPLET
 
-1. **Toujours utiliser la derniere version** du circuit
-2. **Ne pas melanger** composants de versions differentes
-3. **Breakout V2.0** incompatible avec Circuit V1.x
-4. **Tester systematiquement** avant livraison client
+### V2.1 (Decembre 2025) — CURRENT
+
+**Origine:** Audit externe V3 (Hardware + Breakout)
+
+**Corrections Circuit:**
+
+| # | Bloc | Modification | Raison |
+|---|------|--------------|--------|
+| 1 | A.2 | TVS 1.5KE18CA → 1.5KE22CA | V_RWM=15.3V < V_batt=16.8V |
+| 2 | A.3 | NOUVEAU: Crowbar SCR | Protection chargeur 19-24V |
+| 3 | B.2 | Ajout R_pulldown 100k | Marge gate Q_SS |
+| 4 | E.1 | L1 specifie: Wurth 74435588100 | I_sat=13A, DCR=8m ohm |
+| 5 | E.2 | C_filt specifie: Panasonic FM | ESR=28m ohm, 105C |
+| 6 | F.3 | Ajout R_fb 1M (hysteresis) | Anti-chattering 300mV |
+| 7 | F.4 | Ajout R_serie_bobine 150 ohm | Protege bobine @ 16.8V |
+
+**Corrections Breakout:**
+
+| # | Modification | Raison |
+|---|--------------|--------|
+| 1 | R_sense 1k → 2.2k | Marge thermique 88% vs 44% |
+| 2 | Ajout R_limit 100 ohm | Backup si R_sense ouverte |
+| 3 | Ajout PolySwitch 100mA | Limite absolue court-circuit |
+| 4 | Ajout TVS SMAJ18CA x7 | ESD 8kV + inversion |
+| 5 | Ajout C_filt 100nF x7 | Filtrage HF -60dB |
+| 6 | Borniers → JST-XH | Anti-vibration |
+| 7 | Ajout LED temoin | Indication tension presente |
+| 8 | Paires torsadees | Rejection mode commun |
+
+### V2.0 (Decembre 2025)
+
+**Origine:** Refonte architecture plug & play
+
+**Ajouts majeurs:**
+- Soft-start P-MOSFET (IRF9540N)
+- Circuit anti-pop (TL431 + LM393 + relais)
+- Filtre LC (L1 10uH + C_filt 4700uF)
+- Snubber arc suppression (RC)
+- Protection Zener gate
+
+**Philosophie:**
+- Zero configuration utilisateur
+- ON/OFF/CHARGER = seules actions
+- Protection complete automatique
+
+### V1.10 (Novembre 2025)
+
+**Origine:** Audit V2
+
+**Corrections:**
+- Cold crank 6V valide
+- Reference TL431 stable
+- Calculs thermiques complets
+- Hysteresis comparateur
+
+### V1.0-1.9 (Novembre 2025)
+
+**Evolution initiale:**
+- V1.0: Concept initial
+- V1.5: Protection TVS
+- V1.7: Optimisation BOM
+- V1.9: Corrections mineures
 
 ---
 
-**FIN DOCUMENTATION TECHNIQUE V2.0**
+## ARCHITECTURE V2.1
+
+### Diagramme Bloc
+
+```
+BATTERIE 4S
+    │
+    ├─→ [D1 Anti-inversion] ─→ [TVS Surtension] ─→ [CROWBAR Chargeur]
+    │                                                      │
+    │                                              [Q_SS Soft-start]
+    │                                                      │
+    │                                              [SW1 ON/OFF]
+    │                                                      │
+    │                                              [F1 Fusible]
+    │                                                      │
+    │                                              [NTC Inrush]
+    │                                                      │
+    │                                              [L1+C Filtre]
+    │                                                      │
+    │   ┌──────────────────────────────────────────────────┤
+    │   │                                                  │
+    │   │  [TL431 Ref] ─→ [LM393 Comp] ─→ [K_HP Relais]   │
+    │   │                                       │          │
+    │   │                                      HP      MODULE
+    │   │                                              ARYLIC
+    │   └──────────────────────────────────────────────────┘
+    │
+BREAKOUT BOX (7 TP)
+```
+
+### Flux Signal
+
+```
+1. BATTERIE → D1 (anti-inversion)
+2. D1 → TVS1 (protection transitoire)
+3. TVS1 → CROWBAR (protection chargeur)
+4. CROWBAR → Q_SS (soft-start 300ms)
+5. Q_SS → SW1 (ON/OFF manuel)
+6. SW1 → F1 (fusible 6.3A)
+7. F1 → NTC1 (limite inrush)
+8. NTC1 → L1+C_filt (filtre LC)
+9. L1 → MODULE (alimentation)
+10. MODULE → K_HP (via anti-pop) → HP
+```
+
+### Flux Protection
+
+```
+SCENARIO: Chargeur 24V branche par erreur
+
+1. V_entree = 24V arrive sur circuit
+2. D_zener 20V conduit (24V > 20V)
+3. I_gate SCR = (24-20)/1k = 4mA
+4. SCR s'amorce (I_gt = 0.2mA)
+5. Court-circuit V_D1 → GND
+6. I_cc ~ 48A (limite chargeur)
+7. Fusible F1 fond en < 10ms
+8. Circuit protege, fusible a remplacer
+```
+
+---
+
+## SPECIFICATIONS DETAILLEES
+
+### Tensions Nominales
+
+| Point | Min | Typ | Max | Notes |
+|-------|-----|-----|-----|-------|
+| V_BATT | 12.0V | 14.8V | 16.8V | 4S Li-ion |
+| V_D1 | 11.5V | 14.3V | 16.3V | Apres Schottky |
+| V_SOFT | 0→V_D1 | - | - | Rampe 300ms |
+| V_PROT | 11.5V | 14.3V | 16.3V | Apres fusible |
+| V_FILT | 11.5V | 14.3V | 16.3V | Apres filtre |
+| V_REF | 2.45V | 2.50V | 2.55V | TL431 |
+
+### Courants
+
+| Point | Typ | Max | Notes |
+|-------|-----|-----|-------|
+| I_repos | 10mA | 20mA | Module standby |
+| I_moyen | 500mA | 1A | Volume moyen |
+| I_max | 3A | 5A | Volume max |
+| I_inrush | - | 6A | Limite NTC |
+| I_cc | - | 12.6A | Fusion fusible |
+
+### Temperatures
+
+| Composant | Max continu | Critique |
+|-----------|-------------|----------|
+| D1 (SB560) | 80C | 100C |
+| Q_SS (IRF9540N) | 60C | 80C |
+| L1 | 50C | 70C |
+| C_filt | 50C | 70C |
+| K_HP bobine | 60C | 80C |
+
+---
+
+## CALCULS CRITIQUES
+
+### Protection Crowbar
+
+```
+Seuil declenchement:
+V_trigger = V_zener + V_gt = 20V + 0.8V = 20.8V
+
+Courant gate @ 24V:
+I_gate = (24V - 20V) / 1k = 4mA >> 0.2mA (I_gt) OK
+
+Temps fusion fusible:
+I_cc = V_chargeur / R_int = 24V / 0.5 = 48A
+Fusible 6.3A: t_fusion < 10ms @ 48A
+
+Marge securite:
+V_normal_max = 16.8V < 20V (seuil) = 3.2V marge OK
+```
+
+### Hysteresis Comparateur
+
+```
+R_parallele = R_div1 // R_div2 = 100k // 27k = 21.3k
+V_swing = V_PROT = 14V (open collector)
+
+Hysteresis = V_swing x R_parallele / R_fb
+Hysteresis = 14V x 21.3k / 1M = 298mV ~ 300mV
+
+Seuil haut: 11.76V + 150mV = 11.91V
+Seuil bas:  11.76V - 150mV = 11.61V
+```
+
+### Thermique Relais
+
+```
+Sans R_serie @ 16.8V:
+I = 16.8V / 400 ohm = 42mA
+P = 16.8V x 42mA = 706mW > 500mW nominal = SURCHAUFFE
+
+Avec R_serie 150 ohm @ 16.8V:
+I = 16.8V / 550 ohm = 30.5mA = nominal OK
+P_bobine = 30.5mA x 30.5mA x 400 = 372mW OK
+P_R_serie = 30.5mA x 30.5mA x 150 = 140mW < 500mW OK
+```
+
+### Triple Protection Breakout
+
+```
+Mode normal:
+I = 16.8V / 2.2k = 7.6mA
+P = 7.6mA x 7.6mA x 2.2k = 0.127W < 0.5W OK
+
+R_sense ouverte:
+I = 16.8V / 100 ohm = 168mA
+PolySwitch 100mA declenche OK
+
+Court-circuit TP:
+I_max = 168mA (limite PolySwitch)
+Pas de dommage circuit principal
+```
+
+---
+
+## TESTS VALIDATION
+
+### Tests Obligatoires V2.1
+
+| # | Test | Critere GO | Critere NO-GO |
+|---|------|------------|---------------|
+| 1 | Crowbar | Fusible fond @ 20V | Pas de reaction @ 24V |
+| 2 | Soft-start | Rampe 200-500ms | Instantane |
+| 3 | Anti-pop | 0 pop sur 5 cycles | Pop audible |
+| 4 | Thermique D1 | T < 80C @ 1h | T > 90C |
+| 5 | Thermique relais | T < 60C @ 1h | T > 70C |
+| 6 | Ripple audio | < 10mVpp | > 50mVpp |
+| 7 | Hysteresis | Stable @ 11.7V | Chattering |
+
+### Procedure Test Crowbar
+
+```
+ATTENTION: Ce test detruit le fusible!
+
+1. Deconnecter batterie
+2. Alimentation labo sur J_charge
+3. Limite courant 1A
+4. Monter tension:
+   - 12V: Normal
+   - 16V: Normal
+   - 18V: Normal
+   - 20V: SCR declenche, fusible fond
+
+Si fusible ne fond pas @ 24V:
+→ SCR ou Zener defaillant
+→ Remplacer et retester
+```
+
+---
+
+## DEPANNAGE
+
+### Arbre Decision
+
+```
+PROBLEME: Circuit ne demarre pas
+
+  TP1 = 0V?
+  ├─ OUI → Batterie HS ou deconnectee
+  └─ NON → TP1 = 12-17V
+            │
+            TP2 = 0V?
+            ├─ OUI → D1 inverse ou HS
+            └─ NON → TP2 = TP1 - 0.5V
+                      │
+                      TP4 = 0V (SW1=ON)?
+                      ├─ OUI → F1 fondu ou SW1 HS
+                      └─ NON → TP4 = TP2
+                                │
+                                Son OK?
+                                ├─ NON → Verifier K_HP, LM393
+                                └─ OUI → Circuit OK
+```
+
+### Codes Erreur (Breakout)
+
+| LED | TP4 | TP6 | Signification |
+|-----|-----|-----|---------------|
+| OFF | 0V | - | Pas d'alimentation |
+| ON | OK | 0V | Batterie trop basse |
+| ON | OK | 14V | Relais commande OK |
+| Clignote | - | - | BMS protection |
+
+---
+
+## REFERENCES
+
+### Datasheets Composants Critiques
+
+| Composant | Fabricant | Reference |
+|-----------|-----------|-----------|
+| SB560 | ON Semi | SB560-E3/54 |
+| 1.5KE22CA | Littelfuse | 1.5KE22CA |
+| IRF9540N | Infineon | IRF9540NPBF |
+| LM393 | TI | LM393P |
+| TL431 | TI | TL431ACLP |
+| HF46F-12 | Hongfa | HF46F-12-HS1 |
+| MCP41100 | Microchip | - |
+
+### Protocole Premortem
+
+Ce projet suit le protocole PREMORTEM V3.8+:
+- Module 0: Detection composants critiques
+- Module 4: Protections par type
+- Module 4.2: Driver MOSFET + Zener
+- Module 11: Anti-surinfection
+- Module 12: Anti-troncature
+
+---
+
+## CONTACT
+
+Questions techniques: Consulter documentation
+Bugs: Signaler avec numero version + symptome
+
+---
+
+**FIN DOCUMENTATION TECHNIQUE V2.1**
