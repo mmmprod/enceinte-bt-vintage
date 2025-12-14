@@ -1,367 +1,163 @@
-# DOCUMENTATION TECHNIQUE V2.1 — INDEX
+# 📚 Documentation
 
-**Projet:** Enceinte Bluetooth Vintage
-**Version Documentation:** 2.1
-**Date:** Decembre 2025
+> Complete technical documentation for the Vintage Bluetooth Speaker project.
 
 ---
 
-## INDEX DES FICHIERS
+## 📋 Index
 
-### Documentation Circuit
+### Core Documents
 
-| Fichier | Version | Lignes | Description |
-|---------|---------|--------|-------------|
-| Circuit_Enceinte_BT_Vintage_V2_1.md | 2.1 | 693 | **ACTUEL** - Schema + BOM + Guide |
-| Circuit_Enceinte_BT_Vintage_V2_0.md | 2.0 | 893 | Soft-start + anti-pop |
-| Circuit_Enceinte_BT_Vintage_V1_10.md | 1.10 | - | Corrections audit V2 |
-| Circuit_Enceinte_BT_Vintage_V1_9.md | 1.9 | - | Archive |
-| Circuit_Enceinte_BT_Vintage_V1_8.md | 1.8 | - | Archive |
+| Document | Description | Version |
+|----------|-------------|---------|
+| [**Circuit_V2.1.md**](Circuit_Enceinte_BT_Vintage_V2_1.md) | Full schematic + BOM | v2.1 |
+| [**Breakout_V3.1.md**](Breakout_Box_Enceinte_BT_V3_1.md) | Debug box design | v3.1 |
 
-### Documentation Breakout Box
+### Guides
 
-| Fichier | Version | Lignes | Description |
-|---------|---------|--------|-------------|
-| Breakout_Box_Enceinte_BT_V3_1.md | 3.1 | 606 | **ACTUEL** - Triple protection |
-| Breakout_Box_Enceinte_BT_V2_0.md | 2.0 | - | R_sense integrees |
-| Breakout_Box_Enceinte_BT_V1_6.md | 1.6 | - | Archive |
-
-### README
-
-| Fichier | Description |
-|---------|-------------|
-| README_V2.1.md | Guide utilisateur principal |
-| docs_README_V2.1.md | Ce fichier (index technique) |
+| Guide | Description |
+|-------|-------------|
+| [Build Guide](Build_Guide.md) | Step-by-step assembly |
+| [Testing](Testing.md) | Validation procedures |
+| [Troubleshooting](Troubleshooting.md) | Common problems & fixes |
 
 ---
 
-## CHANGELOG COMPLET
-
-### V2.1 (Decembre 2025) — CURRENT
-
-**Origine:** Audit externe V3 (Hardware + Breakout)
-
-**Corrections Circuit:**
-
-| # | Bloc | Modification | Raison |
-|---|------|--------------|--------|
-| 1 | A.2 | TVS 1.5KE18CA → 1.5KE22CA | V_RWM=15.3V < V_batt=16.8V |
-| 2 | A.3 | NOUVEAU: Crowbar SCR | Protection chargeur 19-24V |
-| 3 | B.2 | Ajout R_pulldown 100k | Marge gate Q_SS |
-| 4 | E.1 | L1 specifie: Wurth 74435588100 | I_sat=13A, DCR=8m ohm |
-| 5 | E.2 | C_filt specifie: Panasonic FM | ESR=28m ohm, 105C |
-| 6 | F.3 | Ajout R_fb 1M (hysteresis) | Anti-chattering 300mV |
-| 7 | F.4 | Ajout R_serie_bobine 150 ohm | Protege bobine @ 16.8V |
-
-**Corrections Breakout:**
-
-| # | Modification | Raison |
-|---|--------------|--------|
-| 1 | R_sense 1k → 2.2k | Marge thermique 88% vs 44% |
-| 2 | Ajout R_limit 100 ohm | Backup si R_sense ouverte |
-| 3 | Ajout PolySwitch 100mA | Limite absolue court-circuit |
-| 4 | Ajout TVS SMAJ18CA x7 | ESD 8kV + inversion |
-| 5 | Ajout C_filt 100nF x7 | Filtrage HF -60dB |
-| 6 | Borniers → JST-XH | Anti-vibration |
-| 7 | Ajout LED temoin | Indication tension presente |
-| 8 | Paires torsadees | Rejection mode commun |
-
-### V2.0 (Decembre 2025)
-
-**Origine:** Refonte architecture plug & play
-
-**Ajouts majeurs:**
-- Soft-start P-MOSFET (IRF9540N)
-- Circuit anti-pop (TL431 + LM393 + relais)
-- Filtre LC (L1 10uH + C_filt 4700uF)
-- Snubber arc suppression (RC)
-- Protection Zener gate
-
-**Philosophie:**
-- Zero configuration utilisateur
-- ON/OFF/CHARGER = seules actions
-- Protection complete automatique
-
-### V1.10 (Novembre 2025)
-
-**Origine:** Audit V2
-
-**Corrections:**
-- Cold crank 6V valide
-- Reference TL431 stable
-- Calculs thermiques complets
-- Hysteresis comparateur
-
-### V1.0-1.9 (Novembre 2025)
-
-**Evolution initiale:**
-- V1.0: Concept initial
-- V1.5: Protection TVS
-- V1.7: Optimisation BOM
-- V1.9: Corrections mineures
-
----
-
-## ARCHITECTURE V2.1
-
-### Diagramme Bloc
+## 🔌 Block Diagram
 
 ```
-BATTERIE 4S
-    │
-    ├─→ [D1 Anti-inversion] ─→ [TVS Surtension] ─→ [CROWBAR Chargeur]
-    │                                                      │
-    │                                              [Q_SS Soft-start]
-    │                                                      │
-    │                                              [SW1 ON/OFF]
-    │                                                      │
-    │                                              [F1 Fusible]
-    │                                                      │
-    │                                              [NTC Inrush]
-    │                                                      │
-    │                                              [L1+C Filtre]
-    │                                                      │
-    │   ┌──────────────────────────────────────────────────┤
-    │   │                                                  │
-    │   │  [TL431 Ref] ─→ [LM393 Comp] ─→ [K_HP Relais]   │
-    │   │                                       │          │
-    │   │                                      HP      MODULE
-    │   │                                              ARYLIC
-    │   └──────────────────────────────────────────────────┘
-    │
-BREAKOUT BOX (7 TP)
-```
-
-### Flux Signal
-
-```
-1. BATTERIE → D1 (anti-inversion)
-2. D1 → TVS1 (protection transitoire)
-3. TVS1 → CROWBAR (protection chargeur)
-4. CROWBAR → Q_SS (soft-start 300ms)
-5. Q_SS → SW1 (ON/OFF manuel)
-6. SW1 → F1 (fusible 6.3A)
-7. F1 → NTC1 (limite inrush)
-8. NTC1 → L1+C_filt (filtre LC)
-9. L1 → MODULE (alimentation)
-10. MODULE → K_HP (via anti-pop) → HP
-```
-
-### Flux Protection
-
-```
-SCENARIO: Chargeur 24V branche par erreur
-
-1. V_entree = 24V arrive sur circuit
-2. D_zener 20V conduit (24V > 20V)
-3. I_gate SCR = (24-20)/1k = 4mA
-4. SCR s'amorce (I_gt = 0.2mA)
-5. Court-circuit V_D1 → GND
-6. I_cc ~ 48A (limite chargeur)
-7. Fusible F1 fond en < 10ms
-8. Circuit protege, fusible a remplacer
+┌─────────┐    ┌─────────┐    ┌─────────┐    ┌──────────┐
+│ BATTERY │───▶│ PROTECT │───▶│  SOFT   │───▶│  FILTER  │
+│   4S    │    │  CHAIN  │    │  START  │    │    LC    │
+└─────────┘    └─────────┘    └─────────┘    └──────────┘
+                                                   │
+┌─────────┐    ┌─────────┐    ┌─────────┐         │
+│ SPEAKER │◀───│  RELAY  │◀───│ ANTI-POP│◀────────┤
+│         │    │  K_HP   │    │  LM393  │         │
+└─────────┘    └─────────┘    └─────────┘         │
+                                                   ▼
+                                            ┌──────────┐
+                                            │  ARYLIC  │
+                                            │  MODULE  │
+                                            └──────────┘
 ```
 
 ---
 
-## SPECIFICATIONS DETAILLEES
+## ⚡ Protection Chain
 
-### Tensions Nominales
+```
+                    ┌──────────────────────────────────────┐
+                    │         PROTECTION CHAIN V2.1        │
+                    └──────────────────────────────────────┘
+                    
+BATT+ ──▶ D1 ──▶ TVS ──▶ CROWBAR ──▶ Q_SS ──▶ SW1 ──▶ F1 ──▶ NTC ──▶ LC
+          │       │        │          │                │
+          │       │        │          │                │
+       Reverse  Spike   Wrong     Soft-start       Fuse
+       Block    Clamp   Charger   300ms            6.3A
+```
 
-| Point | Min | Typ | Max | Notes |
-|-------|-----|-----|-----|-------|
-| V_BATT | 12.0V | 14.8V | 16.8V | 4S Li-ion |
-| V_D1 | 11.5V | 14.3V | 16.3V | Apres Schottky |
-| V_SOFT | 0→V_D1 | - | - | Rampe 300ms |
-| V_PROT | 11.5V | 14.3V | 16.3V | Apres fusible |
-| V_FILT | 11.5V | 14.3V | 16.3V | Apres filtre |
-| V_REF | 2.45V | 2.50V | 2.55V | TL431 |
-
-### Courants
-
-| Point | Typ | Max | Notes |
-|-------|-----|-----|-------|
-| I_repos | 10mA | 20mA | Module standby |
-| I_moyen | 500mA | 1A | Volume moyen |
-| I_max | 3A | 5A | Volume max |
-| I_inrush | - | 6A | Limite NTC |
-| I_cc | - | 12.6A | Fusion fusible |
-
-### Temperatures
-
-| Composant | Max continu | Critique |
-|-----------|-------------|----------|
-| D1 (SB560) | 80C | 100C |
-| Q_SS (IRF9540N) | 60C | 80C |
-| L1 | 50C | 70C |
-| C_filt | 50C | 70C |
-| K_HP bobine | 60C | 80C |
+| Stage | Component | Function |
+|-------|-----------|----------|
+| D1 | SB560 | Blocks reverse polarity |
+| TVS | 1.5KE22CA | Clamps transients to 35V |
+| CROWBAR | SCR + Zener | Shorts >18V → blows fuse |
+| Q_SS | IRF9540N | 300ms soft-start |
+| F1 | 6.3A Slow | Overcurrent protection |
+| NTC | 2.5Ω | Limits inrush to 6A |
+| LC | 10µH + 4700µF | Filters noise |
 
 ---
 
-## CALCULS CRITIQUES
+## 🔧 Key Specs
 
-### Protection Crowbar
+### Power
+
+| Parameter | Value |
+|-----------|-------|
+| Input voltage | 12-16.8V |
+| Quiescent current | <20mA |
+| Max current | 5A |
+| Inrush (limited) | 6A |
+
+### Audio
+
+| Parameter | Value |
+|-----------|-------|
+| Output power | 2×50W / 1×100W |
+| THD+N | <0.1% |
+| SNR | >95dB |
+| Frequency response | 20Hz-20kHz |
+
+### Protection
+
+| Threat | Trigger | Action |
+|--------|---------|--------|
+| Reverse polarity | Immediate | Blocked |
+| Overvoltage >18V | 20V | Crowbar → Fuse |
+| Overcurrent | >12.6A | Fuse blows |
+| Speaker pop | <300ms | Relay open |
+
+---
+
+## 📊 Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| **2.1** | Dec 2025 | Crowbar protection, TVS upgrade, hysteresis |
+| 2.0 | Dec 2025 | Soft-start, anti-pop, LC filter |
+| 1.x | Nov 2025 | Initial development |
+
+### V2.1 Changelog
+
+- ✅ TVS upgraded: 1.5KE18CA → 1.5KE22CA
+- ✅ Added SCR crowbar (wrong charger protection)
+- ✅ Added hysteresis to comparator (300mV)
+- ✅ Relay resistor added (prevents overheat)
+- ✅ Breakout box: triple protection + TVS
+
+---
+
+## 🧪 Testing Checklist
 
 ```
-Seuil declenchement:
-V_trigger = V_zener + V_gt = 20V + 0.8V = 20.8V
-
-Courant gate @ 24V:
-I_gate = (24V - 20V) / 1k = 4mA >> 0.2mA (I_gt) OK
-
-Temps fusion fusible:
-I_cc = V_chargeur / R_int = 24V / 0.5 = 48A
-Fusible 6.3A: t_fusion < 10ms @ 48A
-
-Marge securite:
-V_normal_max = 16.8V < 20V (seuil) = 3.2V marge OK
-```
-
-### Hysteresis Comparateur
-
-```
-R_parallele = R_div1 // R_div2 = 100k // 27k = 21.3k
-V_swing = V_PROT = 14V (open collector)
-
-Hysteresis = V_swing x R_parallele / R_fb
-Hysteresis = 14V x 21.3k / 1M = 298mV ~ 300mV
-
-Seuil haut: 11.76V + 150mV = 11.91V
-Seuil bas:  11.76V - 150mV = 11.61V
-```
-
-### Thermique Relais
-
-```
-Sans R_serie @ 16.8V:
-I = 16.8V / 400 ohm = 42mA
-P = 16.8V x 42mA = 706mW > 500mW nominal = SURCHAUFFE
-
-Avec R_serie 150 ohm @ 16.8V:
-I = 16.8V / 550 ohm = 30.5mA = nominal OK
-P_bobine = 30.5mA x 30.5mA x 400 = 372mW OK
-P_R_serie = 30.5mA x 30.5mA x 150 = 140mW < 500mW OK
-```
-
-### Triple Protection Breakout
-
-```
-Mode normal:
-I = 16.8V / 2.2k = 7.6mA
-P = 7.6mA x 7.6mA x 2.2k = 0.127W < 0.5W OK
-
-R_sense ouverte:
-I = 16.8V / 100 ohm = 168mA
-PolySwitch 100mA declenche OK
-
-Court-circuit TP:
-I_max = 168mA (limite PolySwitch)
-Pas de dommage circuit principal
+□ No short circuits (continuity test)
+□ Voltages within spec (multimeter)
+□ Soft-start ramp visible (scope/DMM)
+□ Zero pop on ON/OFF (ears)
+□ Crowbar triggers at 20V (lab supply)
+□ Thermal OK after 1h (touch test)
 ```
 
 ---
 
-## TESTS VALIDATION
+## 📸 Add Your Build
 
-### Tests Obligatoires V2.1
+Built the project? Add your photos!
 
-| # | Test | Critere GO | Critere NO-GO |
-|---|------|------------|---------------|
-| 1 | Crowbar | Fusible fond @ 20V | Pas de reaction @ 24V |
-| 2 | Soft-start | Rampe 200-500ms | Instantane |
-| 3 | Anti-pop | 0 pop sur 5 cycles | Pop audible |
-| 4 | Thermique D1 | T < 80C @ 1h | T > 90C |
-| 5 | Thermique relais | T < 60C @ 1h | T > 70C |
-| 6 | Ripple audio | < 10mVpp | > 50mVpp |
-| 7 | Hysteresis | Stable @ 11.7V | Chattering |
-
-### Procedure Test Crowbar
-
-```
-ATTENTION: Ce test detruit le fusible!
-
-1. Deconnecter batterie
-2. Alimentation labo sur J_charge
-3. Limite courant 1A
-4. Monter tension:
-   - 12V: Normal
-   - 16V: Normal
-   - 18V: Normal
-   - 20V: SCR declenche, fusible fond
-
-Si fusible ne fond pas @ 24V:
-→ SCR ou Zener defaillant
-→ Remplacer et retester
-```
+1. Fork this repo
+2. Add images to `docs/images/community/`
+3. Submit a PR
 
 ---
 
-## DEPANNAGE
+## ❓ FAQ
 
-### Arbre Decision
+**Q: Can I use a different amplifier module?**  
+A: Yes, but adjust voltage specs. Most Class D amps work with 12-24V.
 
-```
-PROBLEME: Circuit ne demarre pas
+**Q: 4Ω vs 8Ω speaker?**  
+A: 4Ω = stereo mode (one channel), 8Ω = mono bridge (full power).
 
-  TP1 = 0V?
-  ├─ OUI → Batterie HS ou deconnectee
-  └─ NON → TP1 = 12-17V
-            │
-            TP2 = 0V?
-            ├─ OUI → D1 inverse ou HS
-            └─ NON → TP2 = TP1 - 0.5V
-                      │
-                      TP4 = 0V (SW1=ON)?
-                      ├─ OUI → F1 fondu ou SW1 HS
-                      └─ NON → TP4 = TP2
-                                │
-                                Son OK?
-                                ├─ NON → Verifier K_HP, LM393
-                                └─ OUI → Circuit OK
-```
+**Q: How long does the battery last?**  
+A: 6Ah pack = ~10h at medium volume.
 
-### Codes Erreur (Breakout)
-
-| LED | TP4 | TP6 | Signification |
-|-----|-----|-----|---------------|
-| OFF | 0V | - | Pas d'alimentation |
-| ON | OK | 0V | Batterie trop basse |
-| ON | OK | 14V | Relais commande OK |
-| Clignote | - | - | BMS protection |
+**Q: What if I use a wrong charger?**  
+A: Crowbar triggers, fuse blows, circuit survives. Replace fuse.
 
 ---
 
-## REFERENCES
-
-### Datasheets Composants Critiques
-
-| Composant | Fabricant | Reference |
-|-----------|-----------|-----------|
-| SB560 | ON Semi | SB560-E3/54 |
-| 1.5KE22CA | Littelfuse | 1.5KE22CA |
-| IRF9540N | Infineon | IRF9540NPBF |
-| LM393 | TI | LM393P |
-| TL431 | TI | TL431ACLP |
-| HF46F-12 | Hongfa | HF46F-12-HS1 |
-| MCP41100 | Microchip | - |
-
-### Protocole Premortem
-
-Ce projet suit le protocole PREMORTEM V3.8+:
-- Module 0: Detection composants critiques
-- Module 4: Protections par type
-- Module 4.2: Driver MOSFET + Zener
-- Module 11: Anti-surinfection
-- Module 12: Anti-troncature
-
----
-
-## CONTACT
-
-Questions techniques: Consulter documentation
-Bugs: Signaler avec numero version + symptome
-
----
-
-**FIN DOCUMENTATION TECHNIQUE V2.1**
+<p align="center">
+  <a href="../README.md">← Back to main README</a>
+</p>
