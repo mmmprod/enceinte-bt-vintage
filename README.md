@@ -3,7 +3,7 @@
 **Turn any vintage speaker into a modern wireless audio system.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-1.7-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-1.8-blue.svg)]()
 [![Status: In Development](https://img.shields.io/badge/Status-In%20Development-orange.svg)]()
 
 ---
@@ -23,7 +23,7 @@ A complete DIY guide to breathe new life into your old speaker cabinet. Stream m
 | 🔋 Battery Powered | 4S 18650 pack (~6h playtime) |
 | 📡 Bluetooth 5.0 | Instant pairing from any phone |
 | 📶 WiFi Streaming | AirPlay, Spotify Connect, DLNA |
-| 🛡️ Full Protection | Inrush limiter, fuse, PTC, TVS |
+| 🛡️ Full Protection | Inrush NTC, fuse, TVS, snubber, reverse diode |
 | 🔧 Test-Ready | Breakout box for easy debugging |
 | 💰 Budget Friendly | ~160€ total |
 
@@ -45,8 +45,8 @@ A complete DIY guide to breathe new life into your old speaker cabinet. Stream m
 | File | Description |
 |------|-------------|
 | [docs/](docs/) | Full build guides and schematics |
-| [Circuit V1.7](docs/Circuit_Enceinte_BT_Vintage_V1_7.md) | Main build guide with BOM and wiring |
-| [Breakout Box V1.3](docs/Breakout_Box_Enceinte_BT_V1_3.md) | Test jig for voltage monitoring |
+| [Circuit V1.8](docs/Circuit_Enceinte_BT_Vintage_V1_8.md) | Main build guide with BOM and wiring |
+| [Breakout Box V1.4](docs/Breakout_Box_Enceinte_BT_V1_4.md) | Test jig for voltage monitoring (parallel observation) |
 | Tests *(coming soon)* | Validation protocol |
 
 ---
@@ -80,10 +80,11 @@ A complete DIY guide to breathe new life into your old speaker cabinet. Stream m
 
 ## ⚠️ Safety
 
-- Always use a fuse
-- Never charge while playing
-- Keep NTC away from other components (it heats up)
-- Double-check polarity before powering on
+- **Check speaker impedance first** — Must measure ≥5.5Ω (DCR) for MONO mode
+- **Always turn OFF before charging** — Never charge while playing
+- **Wait 30s between OFF and ON** — Let NTC cool down
+- **Double-check polarity** — Red = +, Black = -
+- Keep NTC raised 10mm above PCB (it heats up)
 
 ---
 
