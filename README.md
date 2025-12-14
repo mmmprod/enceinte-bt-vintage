@@ -93,10 +93,4 @@ MIT — Do whatever you want with this.
 
 ---
 
-## 🙏 Credits
-
-Designed and documented with the help of Claude (Anthropic).
-
----
-
 **Made with ❤️ for vintage audio lovers**
