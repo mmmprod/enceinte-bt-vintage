@@ -8,8 +8,8 @@
 
 | Document | Version | Description |
 |----------|---------|-------------|
-| [Circuit](Circuit_Enceinte_BT_Vintage_V1_7.md) | V1.7 | Complete build guide — BOM, wiring, step-by-step |
-| [Breakout Box](Breakout_Box_Enceinte_BT_V1_3.md) | V1.3 | Test jig for debugging — 6 test points |
+| [Circuit](Circuit_Enceinte_BT_Vintage_V1_8.md) | V1.8 | Complete build guide — BOM, wiring, step-by-step |
+| [Breakout Box](Breakout_Box_Enceinte_BT_V1_4.md) | V1.4 | Test jig — Parallel observation mode |
 | Test Protocol | *Soon* | Validation procedures |
 
 ---
@@ -41,6 +41,7 @@
 
 | Version | Date | Changes |
 |---------|------|---------|
+| V1.8 | Dec 2025 | Certified audit: PTC removed, SW1 snubber, IND1 before SW1, NTC 10mm, HP DCR threshold |
 | V1.7 | Dec 2025 | Full audit fixes: anti-reverse diode, TVS 22CA, PTC 5A, fuse 6.3A, decoupling, HP check |
 | V1.6 | Dec 2025 | Explicit refs in parentheses, clear build order |
 | V1.5 | Dec 2025 | Breakout box integration |
